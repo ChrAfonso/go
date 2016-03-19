@@ -140,9 +140,6 @@ function placeStone(i, j, col)
     connectedStones = connectedStones
   }
   
-  -- DEBUG
-  print("Liberties at last stone: " .. #lastMove.liberties)
-
   removeDeadGroups()
 end
 
@@ -170,12 +167,8 @@ function getCurrentColor()
 end
 
 function getFreePositions()
-  local free = 0
-  for i = 1,boardsize do
-    for j = 1,boardsize do
-      if board[i][j] == EMPTY then free = free + 1 end
-    end
-  end
+  local positions = getFreePoints()
+  return #positions
 end
 
 function checkEnd()
@@ -185,6 +178,8 @@ function checkEnd()
 end
 
 function getConnectedStones(i, j)
+  if board[i][j] == EMPTY then return {} end
+  
   local stones = {makeStone(i, j, board[i][j])}
   getConnectedStonesR(i, j, stones)
   return stones
