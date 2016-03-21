@@ -50,7 +50,7 @@ function love.draw()
     end
   end
   
-  if lastMove ~= nil then
+  if lastMove ~= nil and lastMove ~= "pass" then
     drawLastMove()
   end
 end
@@ -99,21 +99,27 @@ function love.keypressed(k,s,r)
 end
 
 function step()
-  randomMove() -- starting point
+  randomMove() -- for now, start dumb
   checkEnd()
 end
 
 function randomMove()
+  local col = getCurrentColor()
   local freePoints = getFreePoints()
-  local n = #freePoints
-  if n > 0 then
-  local p
-  repeat
-    p = love.math.random(1,n)
+  while #freePoints > 0 do
+    print ("Free points to check: " .. #freePoints)
+    local p = love.math.random(1,#freePoints)
     local point = freePoints[p]
-  until isLegal(p.x, p.y, board[p.x][p.y])
-  placeStone(point.x, point.y, getCurrentColor())
+    if isLegal(point.x, point.y, col) then
+      placeStone(point.x, point.y, col)
+      return
+    else
+      table.remove(freePoints,p)
+    end
   end
+
+  -- no legal free point found
+  pass()
 end
 
 function getFreePoints()
@@ -146,6 +152,15 @@ function placeStone(i, j, col)
   removeDeadGroups()
 end
 
+function pass()
+  -- if second consecutive pass, end game and start calculating
+  if lastMove == "pass" then
+    endGame()
+  else
+    lastMove = "pass"
+  end
+end
+
 function removeDeadGroups()
   -- TODO make less crude
   for i = 1,boardsize do
@@ -176,8 +191,13 @@ end
 
 function checkEnd()
   if getFreePoints() == 0 then
-    os.exit()
+    endGame()
   end
+end
+
+function endGame()
+  -- TODO calculate points
+  os.exit() -- TEMP
 end
 
 function getConnectedStones(i, j)
@@ -211,6 +231,12 @@ end
 function getNumLiberties(stones)
   local liberties = getLiberties(stones)
   return #liberties
+end
+
+function getNumLibertiesAt(i, j)
+  local libs = {}
+  collectLiberties(i, j, libs)
+  return #libs
 end
 
 function getLiberties(stones)
@@ -254,11 +280,18 @@ end
 function isLegal(i, j, color)
   if board[i][j] ~= EMPTY then
     return false
-  elseif getNumLiberties(i, j) == 0 then
-    return false
-  -- TODO other cases (suicide, ko)
   else
-    return true
+    -- place temp stone
+    board[i][j] = color
+    local con = getConnectedStones(i, j)
+    local numlib = getNumLiberties(con)
+    board[i][j] = EMPTY
+    if numlib == 0 then
+      return false
+    -- TODO other cases (ko) -- cache board positions?
+    else
+      return true
+    end
   end
 end
 
