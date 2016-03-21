@@ -107,9 +107,12 @@ function randomMove()
   local freePoints = getFreePoints()
   local n = #freePoints
   if n > 0 then
-    local p = love.math.random(1,n)
+  local p
+  repeat
+    p = love.math.random(1,n)
     local point = freePoints[p]
-    placeStone(point.x, point.y, getCurrentColor())
+  until isLegal(p.x, p.y, board[p.x][p.y])
+  placeStone(point.x, point.y, getCurrentColor())
   end
 end
 
@@ -247,3 +250,15 @@ function isPositionOnBoard(i, j)
     return false
   end
 end
+
+function isLegal(i, j, color)
+  if board[i][j] ~= EMPTY then
+    return false
+  elseif getNumLiberties(i, j) == 0 then
+    return false
+  -- TODO other cases (suicide, ko)
+  else
+    return true
+  end
+end
+
