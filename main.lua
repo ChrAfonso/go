@@ -149,7 +149,18 @@ function placeStone(i, j, col)
     connectedStones = connectedStones
   }
   
-  removeDeadGroups()
+  -- only remove enemies, no suicide allowed
+  removeDeadGroups(otherColor(col))
+end
+
+function otherColor(col)
+  if col == BLACK then
+    return WHITE
+  elseif col == WHITE then
+    return BLACK
+  else
+    return col
+  end
 end
 
 function pass()
@@ -161,15 +172,17 @@ function pass()
   end
 end
 
-function removeDeadGroups()
+function removeDeadGroups(col)
   -- TODO make less crude
   for i = 1,boardsize do
     for j = 1,boardsize do
-      local connectStones = getConnectedStones(i, j)
-      if getNumLiberties(connectStones) == 0 then
-        local color = board[i][j] -- TODO for counting
-        for _,stone in pairs(connectStones) do
-          board[stone.x][stone.y] = EMPTY
+      if not col or col == board[i][j] then
+        local connectStones = getConnectedStones(i, j)
+        if getNumLiberties(connectStones) == 0 then
+          local color = board[i][j] -- TODO for counting
+          for _,stone in pairs(connectStones) do
+            board[stone.x][stone.y] = EMPTY
+          end
         end
       end
     end
@@ -256,6 +269,28 @@ function collectLiberties(i, j, liberties)
   end
 end
 
+function getSurroundingEnemies(stones)
+  if #stones == 0 then return {} end
+  
+  surroundingStones = {}
+  enemyColor = otherColor(stones[1].color)
+
+  for _,stone in pairs(stones) do
+    collectSurroundingEnemies(stone, surroundingStones, enemyColor)
+  end
+
+  return surroundingStones
+end
+
+function collectSurroundingEnemies(stone, surroundingStones, enemyColor)
+  for _,position in pairs(getSurroundingPositions(stone.x, stone.y)) do
+    if board[position[1]][position[2]] == enemyColor
+    and not isStoneInTable(position[1], position[2], surroundingStones) then
+      table.insert(surroundingStones, makeStone(position[1], position[2], enemyColor))
+    end
+  end
+end
+
 function makeStone(i, j, col)
   return {x=i, y=j, color=col}
 end
@@ -285,8 +320,19 @@ function isLegal(i, j, color)
     board[i][j] = color
     local con = getConnectedStones(i, j)
     local numlib = getNumLiberties(con)
-    board[i][j] = EMPTY
+    local killingSurrounders = false
     if numlib == 0 then
+      surroundingEnemies = getSurroundingEnemies(con)
+      for _,stone in pairs(surroundingEnemies) do
+        if getNumLiberties(getConnectedStones(stone.x, stone.y)) == 0 then
+	  killingSurrounders = true
+	  break
+	end
+      end
+    end
+    board[i][j] = EMPTY
+    
+    if numlib == 0 and not killingSurrounders then
       return false
     -- TODO other cases (ko) -- cache board positions?
     else
